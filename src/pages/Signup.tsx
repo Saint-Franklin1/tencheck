@@ -42,13 +42,14 @@ const Signup = () => {
       return;
     }
     setLoading(true);
-    const { error } = await signUp(email, password, { name, phone, role });
+    const { error, data } = await signUp(email, password, { name, phone, role });
     setLoading(false);
     if (error) {
       toast.error(error.message);
-    } else {
-      toast.success("Account created! Check your email to confirm, then log in.");
-      navigate(redirectPath ? `/login?redirect=${encodeURIComponent(redirectPath)}` : "/login");
+    } else if (data?.user) {
+      toast.success("Account created successfully! Welcome to TenCheck.");
+      // Navigate to dashboard or redirect path - user is automatically signed in
+      navigate(redirectPath || "/dashboard");
     }
   };
 
