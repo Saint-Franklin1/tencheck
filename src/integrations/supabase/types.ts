@@ -508,6 +508,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          account_status: string
           avatar_url: string | null
           created_at: string
           deletion_requested_at: string | null
@@ -518,10 +519,12 @@ export type Database = {
           name: string
           phone: string | null
           role: string
+          tenant_verification_status: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          account_status?: string
           avatar_url?: string | null
           created_at?: string
           deletion_requested_at?: string | null
@@ -532,10 +535,12 @@ export type Database = {
           name?: string
           phone?: string | null
           role?: string
+          tenant_verification_status?: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          account_status?: string
           avatar_url?: string | null
           created_at?: string
           deletion_requested_at?: string | null
@@ -546,6 +551,7 @@ export type Database = {
           name?: string
           phone?: string | null
           role?: string
+          tenant_verification_status?: string
           updated_at?: string
           user_id?: string
         }
@@ -562,8 +568,10 @@ export type Database = {
           is_available: boolean
           landlord_id: string
           location: string
+          occupied_units: number
           rent_amount: number
           title: string
+          total_units: number
           updated_at: string
         }
         Insert: {
@@ -576,8 +584,10 @@ export type Database = {
           is_available?: boolean
           landlord_id: string
           location: string
+          occupied_units?: number
           rent_amount: number
           title: string
+          total_units?: number
           updated_at?: string
         }
         Update: {
@@ -590,8 +600,10 @@ export type Database = {
           is_available?: boolean
           landlord_id?: string
           location?: string
+          occupied_units?: number
           rent_amount?: number
           title?: string
+          total_units?: number
           updated_at?: string
         }
         Relationships: []
@@ -599,6 +611,7 @@ export type Database = {
       property_applications: {
         Row: {
           application_status: string
+          apply_source: string
           created_at: string
           id: string
           landlord_id: string
@@ -609,6 +622,7 @@ export type Database = {
         }
         Insert: {
           application_status?: string
+          apply_source?: string
           created_at?: string
           id?: string
           landlord_id: string
@@ -619,6 +633,7 @@ export type Database = {
         }
         Update: {
           application_status?: string
+          apply_source?: string
           created_at?: string
           id?: string
           landlord_id?: string
@@ -680,6 +695,7 @@ export type Database = {
           payment_date: string | null
           payment_method: string
           property_id: string | null
+          tenancy_id: string | null
           tenant_id: string
           updated_at: string
           verification_status: string
@@ -693,6 +709,7 @@ export type Database = {
           payment_date?: string | null
           payment_method?: string
           property_id?: string | null
+          tenancy_id?: string | null
           tenant_id: string
           updated_at?: string
           verification_status?: string
@@ -706,6 +723,7 @@ export type Database = {
           payment_date?: string | null
           payment_method?: string
           property_id?: string | null
+          tenancy_id?: string | null
           tenant_id?: string
           updated_at?: string
           verification_status?: string
@@ -1337,34 +1355,40 @@ export type Database = {
       }
       threads: {
         Row: {
+          application_id: string | null
           created_at: string
           id: string
           landlord_id: string | null
           property_id: string | null
           service_worker_id: string | null
           subject: string | null
+          tenancy_id: string | null
           tenant_id: string | null
           thread_type: string
           updated_at: string
         }
         Insert: {
+          application_id?: string | null
           created_at?: string
           id?: string
           landlord_id?: string | null
           property_id?: string | null
           service_worker_id?: string | null
           subject?: string | null
+          tenancy_id?: string | null
           tenant_id?: string | null
           thread_type?: string
           updated_at?: string
         }
         Update: {
+          application_id?: string | null
           created_at?: string
           id?: string
           landlord_id?: string | null
           property_id?: string | null
           service_worker_id?: string | null
           subject?: string | null
+          tenancy_id?: string | null
           tenant_id?: string | null
           thread_type?: string
           updated_at?: string
@@ -1450,6 +1474,39 @@ export type Database = {
           id?: string
           last_reset_date?: string
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      verification_queue: {
+        Row: {
+          id: string
+          notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          role: string
+          status: string
+          submitted_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          role: string
+          status?: string
+          submitted_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          role?: string
+          status?: string
+          submitted_at?: string
           user_id?: string
         }
         Relationships: []
@@ -1548,12 +1605,27 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      auto_apply_property: {
+        Args: { _message?: string; _property_id: string }
+        Returns: Json
+      }
       calculate_credit_passport: {
         Args: { _tenant_id: string }
         Returns: number
       }
       calculate_tenant_risk: { Args: { _tenant_id: string }; Returns: number }
       calculate_tenant_score: { Args: { _tenant_id: string }; Returns: number }
+      confirm_tenancy_payment: { Args: { _txn_id: string }; Returns: Json }
+      find_or_create_property_thread: {
+        Args: {
+          _application_id?: string
+          _landlord_id: string
+          _property_id: string
+          _tenancy_id?: string
+          _tenant_id: string
+        }
+        Returns: string
+      }
       find_or_create_tenant: {
         Args: {
           _name: string
@@ -1573,6 +1645,15 @@ export type Database = {
       is_thread_participant: {
         Args: { _thread_id: string; _user_id: string }
         Returns: boolean
+      }
+      record_tenancy_payment: {
+        Args: {
+          _amount: number
+          _code?: string
+          _method?: string
+          _tenancy_id: string
+        }
+        Returns: Json
       }
       refresh_property_demand: { Args: never; Returns: undefined }
     }

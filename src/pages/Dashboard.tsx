@@ -10,7 +10,7 @@ import {
   LogOut, Menu, X, FileText, Plus, Building2,
   ChevronRight, ChevronDown, Eye, Bed, Bath, MapPin, ImageIcon, Edit, Trash2,
   UserCheck, AlertTriangle, User, CreditCard, Wifi, Award, TrendingDown, Sparkles,
-  Scale, Bell, ClipboardList, Link2
+  Scale, Bell, ClipboardList, Link2, CheckCircle
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { motion, AnimatePresence } from "framer-motion";
@@ -37,6 +37,9 @@ import { ServiceCreditsPanel } from "@/components/dashboard/ServiceCreditsPanel"
 import { FileWorkerComplaint } from "@/components/dashboard/WorkerComplaintsPanel";
 import ApplicationLinkGenerator from "@/components/dashboard/ApplicationLinkGenerator";
 import ApplicationsPanel from "@/components/dashboard/ApplicationsPanel";
+import MyTenantsPanel from "@/components/dashboard/MyTenantsPanel";
+import ReportsPanel from "@/components/dashboard/ReportsPanel";
+import ConfirmPaymentsPanel from "@/components/dashboard/ConfirmPaymentsPanel";
 
 type Tab = string;
 
@@ -58,7 +61,7 @@ const Dashboard = () => {
   useEffect(() => {
     if (role === "landlord") setActiveTab("my-properties");
     else if (role === "tenant") setActiveTab("browse-houses");
-    else setActiveTab("search-tenant");
+    else setActiveTab("overview");
   }, [role]);
 
   // Realtime: listen for service_request changes and notifications
@@ -100,14 +103,21 @@ const Dashboard = () => {
       label: "Overview",
       tabs: [
         { id: "my-properties", icon: Building2, label: "Properties" },
-        { id: "tenancy-records", icon: ClipboardList, label: "Tenancies" },
-        { id: "search-tenant", icon: Search, label: "Search Tenant" },
+        { id: "my-tenants", icon: UserCheck, label: "My Tenants" },
+        { id: "reports", icon: BarChart3, label: "Reports" },
+      ],
+    },
+    {
+      label: "Applications",
+      tabs: [
+        { id: "applications", icon: ClipboardList, label: "Applications" },
+        { id: "application-links", icon: Link2, label: "Share Links" },
       ],
     },
     {
       label: "Payments",
       tabs: [
-        { id: "report-payment", icon: FileText, label: "Report Payment" },
+        { id: "confirm-payments", icon: CheckCircle, label: "Confirm Payments" } as any,
         { id: "payment-overview", icon: CreditCard, label: "Payment History" },
       ],
     },
@@ -116,14 +126,6 @@ const Dashboard = () => {
       tabs: [
         { id: "messages", icon: MessageSquare, label: "Messages" },
         { id: "notifications", icon: Bell, label: "Notifications" },
-        { id: "inquiries", icon: MessageSquare, label: "Inquiries" },
-      ],
-    },
-    {
-      label: "Applications",
-      tabs: [
-        { id: "application-links", icon: Link2, label: "Share Links" },
-        { id: "applications", icon: ClipboardList, label: "Applications" },
       ],
     },
     {
@@ -297,6 +299,9 @@ const Dashboard = () => {
                 {role === "landlord" && activeTab === "tenancy-records" && <LandlordTenancyManager userId={user.id} />}
                 {role === "landlord" && activeTab === "application-links" && <ApplicationLinkGenerator userId={user.id} />}
                 {role === "landlord" && activeTab === "applications" && <ApplicationsPanel userId={user.id} />}
+                {role === "landlord" && activeTab === "my-tenants" && <MyTenantsPanel userId={user.id} />}
+                {role === "landlord" && activeTab === "reports" && <ReportsPanel userId={user.id} />}
+                {role === "landlord" && activeTab === "confirm-payments" && <ConfirmPaymentsPanel userId={user.id} />}
 
                 {/* Tenant tabs */}
                 {role === "tenant" && activeTab === "browse-houses" && <BrowseHousesView />}

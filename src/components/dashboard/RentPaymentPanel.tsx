@@ -12,13 +12,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-// Tenant Rent Payment Panel
+// Tenant Rent Payment Panel — driven by tenancy selection
 export const TenantPaymentPanel = ({ userId }: { userId: string }) => {
   const queryClient = useQueryClient();
-  const [payMethod, setPayMethod] = useState<"mpesa" | "wallet" | "bank_transfer">("mpesa");
+  const [payMethod, setPayMethod] = useState<"mpesa" | "bank_transfer">("mpesa");
   const [amount, setAmount] = useState("");
   const [mpesaCode, setMpesaCode] = useState("");
-  const [landlordPhone, setLandlordPhone] = useState("");
+  const [tenancyId, setTenancyId] = useState<string>("");
 
   const { data: wallet } = useQuery({
     queryKey: ["wallet", userId],
@@ -29,6 +29,27 @@ export const TenantPaymentPanel = ({ userId }: { userId: string }) => {
         .eq("tenant_id", userId)
         .maybeSingle();
       return data;
+    },
+  });
+
+  const { data: tenancies } = useQuery({
+    queryKey: ["my-tenancies-for-pay", userId],
+    queryFn: async () => {
+      const { data: t } = await supabase
+        .from("tenancy_records")
+        .select("id, monthly_rent, property_id, landlord_id")
+        .eq("tenant_id", userId)
+        .eq("tenancy_status", "active");
+      if (!t?.length) return [];
+      const propIds = t.map((x) => x.property_id).filter(Boolean) as string[];
+      const llIds = [...new Set(t.map((x) => x.landlord_id))];
+      const [{ data: props }, { data: lls }] = await Promise.all([
+        propIds.length ? supabase.from("properties").select("id, title").in("id", propIds) : Promise.resolve({ data: [] as any[] }),
+        supabase.from("profiles").select("user_id, name").in("user_id", llIds),
+      ]);
+      const pmap = new Map((props ?? []).map((p) => [p.id, p]));
+      const lmap = new Map((lls ?? []).map((l) => [l.user_id, l]));
+      return t.map((x) => ({ ...x, property: pmap.get(x.property_id ?? ""), landlord: lmap.get(x.landlord_id) }));
     },
   });
 
@@ -47,50 +68,22 @@ export const TenantPaymentPanel = ({ userId }: { userId: string }) => {
 
   const recordPayment = useMutation({
     mutationFn: async () => {
-      // Find landlord by phone
-      const { data: landlord } = await supabase
-        .from("profiles")
-        .select("user_id")
-        .eq("phone", landlordPhone)
-        .eq("role", "landlord")
-        .maybeSingle();
-
-      if (!landlord) throw new Error("Landlord not found with that phone");
-
-      if (payMethod === "wallet") {
-        const { data, error } = await supabase.functions.invoke("record-payment", {
-          body: {
-            action: "wallet-pay",
-            landlord_id: landlord.user_id,
-            amount: parseInt(amount),
-          },
-        });
-        if (error) throw error;
-        if (data?.error) throw new Error(data.error);
-        return data;
-      }
-
-      const { data, error } = await supabase.functions.invoke("record-payment", {
-        body: {
-          action: "record",
-          tenant_id: userId,
-          landlord_id: landlord.user_id,
-          amount: parseInt(amount),
-          payment_method: payMethod,
-          mpesa_transaction_code: mpesaCode || null,
-        },
+      if (!tenancyId) throw new Error("Select a tenancy");
+      if (!amount || parseInt(amount) <= 0) throw new Error("Enter a valid amount");
+      const { data, error } = await supabase.rpc("record_tenancy_payment", {
+        _tenancy_id: tenancyId,
+        _amount: parseInt(amount),
+        _method: payMethod,
+        _code: mpesaCode || null,
       });
       if (error) throw error;
-      if (data?.error) throw new Error(data.error);
       return data;
     },
     onSuccess: () => {
-      toast.success("Payment recorded!");
+      toast.success("Payment reported — landlord will confirm.");
       queryClient.invalidateQueries({ queryKey: ["rent-transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["wallet"] });
       setAmount("");
       setMpesaCode("");
-      setLandlordPhone("");
     },
     onError: (err: any) => toast.error(err.message),
   });
@@ -139,13 +132,23 @@ export const TenantPaymentPanel = ({ userId }: { userId: string }) => {
           className="space-y-4"
         >
           <div className="space-y-2">
-            <Label>Landlord Phone</Label>
-            <Input
-              placeholder="0712 345 678"
-              value={landlordPhone}
-              onChange={(e) => setLandlordPhone(e.target.value)}
+            <Label>Tenancy</Label>
+            <select
+              className="w-full h-10 px-3 rounded-lg border border-border bg-background text-sm"
+              value={tenancyId}
+              onChange={(e) => setTenancyId(e.target.value)}
               required
-            />
+            >
+              <option value="">Select a tenancy…</option>
+              {(tenancies ?? []).map((t: any) => (
+                <option key={t.id} value={t.id}>
+                  {t.property?.title || "Property"} — {t.landlord?.name || "Landlord"} (KES {t.monthly_rent?.toLocaleString()})
+                </option>
+              ))}
+            </select>
+            {(tenancies ?? []).length === 0 && (
+              <p className="text-xs text-muted-foreground">No active tenancies. Apply to a property first.</p>
+            )}
           </div>
           <div className="space-y-2">
             <Label>Amount (Ksh)</Label>
@@ -160,7 +163,7 @@ export const TenantPaymentPanel = ({ userId }: { userId: string }) => {
           <div className="space-y-2">
             <Label>Payment Method</Label>
             <div className="flex gap-2">
-              {(["mpesa", "wallet", "bank_transfer"] as const).map((m) => (
+              {(["mpesa", "bank_transfer"] as const).map((m) => (
                 <button
                   key={m}
                   type="button"
@@ -171,23 +174,20 @@ export const TenantPaymentPanel = ({ userId }: { userId: string }) => {
                       : "border-border bg-card text-muted-foreground hover:bg-muted/50"
                   }`}
                 >
-                  {m === "mpesa" ? "M-Pesa" : m === "wallet" ? "Wallet" : "Bank"}
+                  {m === "mpesa" ? "M-Pesa" : "Bank"}
                 </button>
               ))}
             </div>
           </div>
           {payMethod === "mpesa" && (
             <div className="space-y-2">
-              <Label>M-Pesa Transaction Code</Label>
+              <Label>M-Pesa Transaction Code (optional)</Label>
               <Input
                 placeholder="QJK123ABC"
                 value={mpesaCode}
                 onChange={(e) => setMpesaCode(e.target.value)}
               />
             </div>
-          )}
-          {payMethod === "wallet" && wallet && (wallet.balance ?? 0) < parseInt(amount || "0") && (
-            <p className="text-xs text-destructive">Insufficient wallet balance</p>
           )}
           <Button type="submit" className="w-full" disabled={recordPayment.isPending}>
             {recordPayment.isPending ? "Submitting..." : "Submit Payment"}
