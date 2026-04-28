@@ -63,6 +63,7 @@ const App = () => (
               <Route path="/passport/:tenantId" element={<PassportPublic />} />
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/apply/:token" element={<ApplyProperty />} />
+              <Route path="/properties/:id/apply" element={<ApplyDirect />} />
               <Route path="/features" element={<Navigate to="/#features" replace />} />
               <Route path="/how-it-works" element={<Navigate to="/#how-it-works" replace />} />
               <Route path="*" element={<NotFound />} />
