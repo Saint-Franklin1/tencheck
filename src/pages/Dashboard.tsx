@@ -61,7 +61,7 @@ const Dashboard = () => {
   useEffect(() => {
     if (role === "landlord") setActiveTab("my-properties");
     else if (role === "tenant") setActiveTab("browse-houses");
-    else setActiveTab("search-tenant");
+    else setActiveTab("overview");
   }, [role]);
 
   // Realtime: listen for service_request changes and notifications
