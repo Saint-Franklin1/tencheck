@@ -103,14 +103,21 @@ const Dashboard = () => {
       label: "Overview",
       tabs: [
         { id: "my-properties", icon: Building2, label: "Properties" },
-        { id: "tenancy-records", icon: ClipboardList, label: "Tenancies" },
-        { id: "search-tenant", icon: Search, label: "Search Tenant" },
+        { id: "my-tenants", icon: UserCheck, label: "My Tenants" },
+        { id: "reports", icon: BarChart3, label: "Reports" },
+      ],
+    },
+    {
+      label: "Applications",
+      tabs: [
+        { id: "applications", icon: ClipboardList, label: "Applications" },
+        { id: "application-links", icon: Link2, label: "Share Links" },
       ],
     },
     {
       label: "Payments",
       tabs: [
-        { id: "report-payment", icon: FileText, label: "Report Payment" },
+        { id: "confirm-payments", icon: CheckCircle, label: "Confirm Payments" } as any,
         { id: "payment-overview", icon: CreditCard, label: "Payment History" },
       ],
     },
@@ -119,14 +126,6 @@ const Dashboard = () => {
       tabs: [
         { id: "messages", icon: MessageSquare, label: "Messages" },
         { id: "notifications", icon: Bell, label: "Notifications" },
-        { id: "inquiries", icon: MessageSquare, label: "Inquiries" },
-      ],
-    },
-    {
-      label: "Applications",
-      tabs: [
-        { id: "application-links", icon: Link2, label: "Share Links" },
-        { id: "applications", icon: ClipboardList, label: "Applications" },
       ],
     },
     {
