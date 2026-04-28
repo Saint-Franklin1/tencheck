@@ -132,13 +132,23 @@ export const TenantPaymentPanel = ({ userId }: { userId: string }) => {
           className="space-y-4"
         >
           <div className="space-y-2">
-            <Label>Landlord Phone</Label>
-            <Input
-              placeholder="0712 345 678"
-              value={landlordPhone}
-              onChange={(e) => setLandlordPhone(e.target.value)}
+            <Label>Tenancy</Label>
+            <select
+              className="w-full h-10 px-3 rounded-lg border border-border bg-background text-sm"
+              value={tenancyId}
+              onChange={(e) => setTenancyId(e.target.value)}
               required
-            />
+            >
+              <option value="">Select a tenancy…</option>
+              {(tenancies ?? []).map((t: any) => (
+                <option key={t.id} value={t.id}>
+                  {t.property?.title || "Property"} — {t.landlord?.name || "Landlord"} (KES {t.monthly_rent?.toLocaleString()})
+                </option>
+              ))}
+            </select>
+            {(tenancies ?? []).length === 0 && (
+              <p className="text-xs text-muted-foreground">No active tenancies. Apply to a property first.</p>
+            )}
           </div>
           <div className="space-y-2">
             <Label>Amount (Ksh)</Label>
@@ -153,7 +163,7 @@ export const TenantPaymentPanel = ({ userId }: { userId: string }) => {
           <div className="space-y-2">
             <Label>Payment Method</Label>
             <div className="flex gap-2">
-              {(["mpesa", "wallet", "bank_transfer"] as const).map((m) => (
+              {(["mpesa", "bank_transfer"] as const).map((m) => (
                 <button
                   key={m}
                   type="button"
@@ -164,23 +174,20 @@ export const TenantPaymentPanel = ({ userId }: { userId: string }) => {
                       : "border-border bg-card text-muted-foreground hover:bg-muted/50"
                   }`}
                 >
-                  {m === "mpesa" ? "M-Pesa" : m === "wallet" ? "Wallet" : "Bank"}
+                  {m === "mpesa" ? "M-Pesa" : "Bank"}
                 </button>
               ))}
             </div>
           </div>
           {payMethod === "mpesa" && (
             <div className="space-y-2">
-              <Label>M-Pesa Transaction Code</Label>
+              <Label>M-Pesa Transaction Code (optional)</Label>
               <Input
                 placeholder="QJK123ABC"
                 value={mpesaCode}
                 onChange={(e) => setMpesaCode(e.target.value)}
               />
             </div>
-          )}
-          {payMethod === "wallet" && wallet && (wallet.balance ?? 0) < parseInt(amount || "0") && (
-            <p className="text-xs text-destructive">Insufficient wallet balance</p>
           )}
           <Button type="submit" className="w-full" disabled={recordPayment.isPending}>
             {recordPayment.isPending ? "Submitting..." : "Submit Payment"}
