@@ -10,7 +10,7 @@ import {
   LogOut, Menu, X, FileText, Plus, Building2,
   ChevronRight, ChevronDown, Eye, Bed, Bath, MapPin, ImageIcon, Edit, Trash2,
   UserCheck, AlertTriangle, User, CreditCard, Wifi, Award, TrendingDown, Sparkles,
-  Scale, Bell, ClipboardList, Link2
+  Scale, Bell, ClipboardList, Link2, CheckCircle
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { motion, AnimatePresence } from "framer-motion";
