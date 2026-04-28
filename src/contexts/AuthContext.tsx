@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 interface Profile {
   id: string;
@@ -11,6 +11,8 @@ interface Profile {
   phone: string | null;
   role: string;
   avatar_url: string | null;
+  account_status?: string;
+  tenant_verification_status?: string;
 }
 
 interface AuthContextType {
@@ -37,7 +39,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       .select("*")
       .eq("user_id", userId)
       .single();
-    setProfile(data as Profile | null);
+    const p = data as Profile | null;
+
+    // Enforce account status
+    if (p?.account_status === "deleted") {
+      await supabase.auth.signOut();
+      setProfile(null);
+      setUser(null);
+      setSession(null);
+      toast.error("This account has been deleted.");
+      return;
+    }
+    if (p?.account_status === "suspended") {
+      await supabase.auth.signOut();
+      setProfile(null);
+      setUser(null);
+      setSession(null);
+      toast.error("Your account is suspended. Contact support.");
+      return;
+    }
+
+    setProfile(p);
   };
 
   useEffect(() => {
@@ -46,7 +68,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          // Use setTimeout to avoid deadlock with Supabase auth
           setTimeout(() => fetchProfile(session.user.id), 0);
         } else {
           setProfile(null);
