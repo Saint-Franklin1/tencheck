@@ -37,6 +37,9 @@ import { ServiceCreditsPanel } from "@/components/dashboard/ServiceCreditsPanel"
 import { FileWorkerComplaint } from "@/components/dashboard/WorkerComplaintsPanel";
 import ApplicationLinkGenerator from "@/components/dashboard/ApplicationLinkGenerator";
 import ApplicationsPanel from "@/components/dashboard/ApplicationsPanel";
+import MyTenantsPanel from "@/components/dashboard/MyTenantsPanel";
+import ReportsPanel from "@/components/dashboard/ReportsPanel";
+import ConfirmPaymentsPanel from "@/components/dashboard/ConfirmPaymentsPanel";
 
 type Tab = string;
 
