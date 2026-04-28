@@ -12,13 +12,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-// Tenant Rent Payment Panel
+// Tenant Rent Payment Panel — driven by tenancy selection
 export const TenantPaymentPanel = ({ userId }: { userId: string }) => {
   const queryClient = useQueryClient();
-  const [payMethod, setPayMethod] = useState<"mpesa" | "wallet" | "bank_transfer">("mpesa");
+  const [payMethod, setPayMethod] = useState<"mpesa" | "bank_transfer">("mpesa");
   const [amount, setAmount] = useState("");
   const [mpesaCode, setMpesaCode] = useState("");
-  const [landlordPhone, setLandlordPhone] = useState("");
+  const [tenancyId, setTenancyId] = useState<string>("");
 
   const { data: wallet } = useQuery({
     queryKey: ["wallet", userId],
@@ -29,6 +29,27 @@ export const TenantPaymentPanel = ({ userId }: { userId: string }) => {
         .eq("tenant_id", userId)
         .maybeSingle();
       return data;
+    },
+  });
+
+  const { data: tenancies } = useQuery({
+    queryKey: ["my-tenancies-for-pay", userId],
+    queryFn: async () => {
+      const { data: t } = await supabase
+        .from("tenancy_records")
+        .select("id, monthly_rent, property_id, landlord_id")
+        .eq("tenant_id", userId)
+        .eq("tenancy_status", "active");
+      if (!t?.length) return [];
+      const propIds = t.map((x) => x.property_id).filter(Boolean) as string[];
+      const llIds = [...new Set(t.map((x) => x.landlord_id))];
+      const [{ data: props }, { data: lls }] = await Promise.all([
+        propIds.length ? supabase.from("properties").select("id, title").in("id", propIds) : Promise.resolve({ data: [] as any[] }),
+        supabase.from("profiles").select("user_id, name").in("user_id", llIds),
+      ]);
+      const pmap = new Map((props ?? []).map((p) => [p.id, p]));
+      const lmap = new Map((lls ?? []).map((l) => [l.user_id, l]));
+      return t.map((x) => ({ ...x, property: pmap.get(x.property_id ?? ""), landlord: lmap.get(x.landlord_id) }));
     },
   });
 
@@ -47,50 +68,22 @@ export const TenantPaymentPanel = ({ userId }: { userId: string }) => {
 
   const recordPayment = useMutation({
     mutationFn: async () => {
-      // Find landlord by phone
-      const { data: landlord } = await supabase
-        .from("profiles")
-        .select("user_id")
-        .eq("phone", landlordPhone)
-        .eq("role", "landlord")
-        .maybeSingle();
-
-      if (!landlord) throw new Error("Landlord not found with that phone");
-
-      if (payMethod === "wallet") {
-        const { data, error } = await supabase.functions.invoke("record-payment", {
-          body: {
-            action: "wallet-pay",
-            landlord_id: landlord.user_id,
-            amount: parseInt(amount),
-          },
-        });
-        if (error) throw error;
-        if (data?.error) throw new Error(data.error);
-        return data;
-      }
-
-      const { data, error } = await supabase.functions.invoke("record-payment", {
-        body: {
-          action: "record",
-          tenant_id: userId,
-          landlord_id: landlord.user_id,
-          amount: parseInt(amount),
-          payment_method: payMethod,
-          mpesa_transaction_code: mpesaCode || null,
-        },
+      if (!tenancyId) throw new Error("Select a tenancy");
+      if (!amount || parseInt(amount) <= 0) throw new Error("Enter a valid amount");
+      const { data, error } = await supabase.rpc("record_tenancy_payment", {
+        _tenancy_id: tenancyId,
+        _amount: parseInt(amount),
+        _method: payMethod,
+        _code: mpesaCode || null,
       });
       if (error) throw error;
-      if (data?.error) throw new Error(data.error);
       return data;
     },
     onSuccess: () => {
-      toast.success("Payment recorded!");
+      toast.success("Payment reported — landlord will confirm.");
       queryClient.invalidateQueries({ queryKey: ["rent-transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["wallet"] });
       setAmount("");
       setMpesaCode("");
-      setLandlordPhone("");
     },
     onError: (err: any) => toast.error(err.message),
   });
