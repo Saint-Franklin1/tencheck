@@ -25,6 +25,7 @@ const TenantProfilePage = lazy(() => import("./pages/TenantProfilePage"));
 const PassportPublic = lazy(() => import("./pages/PassportPublic"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const ApplyProperty = lazy(() => import("./pages/ApplyProperty"));
+const ApplyDirect = lazy(() => import("./pages/ApplyDirect"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
