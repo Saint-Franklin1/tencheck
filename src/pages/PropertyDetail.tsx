@@ -247,9 +247,14 @@ const PropertyDetail = () => {
                     </div>
                   </div>
                 ) : (
-                  <Button className="w-full mt-5 gap-2" onClick={() => setShowInquiry(true)}>
-                    <MessageSquare className="h-4 w-4" /> Send Inquiry
-                  </Button>
+                  <div className="mt-5 space-y-2">
+                    <Button className="w-full gap-2" onClick={() => navigate(`/properties/${id}/apply`)}>
+                      <Shield className="h-4 w-4" /> Apply Now
+                    </Button>
+                    <Button variant="outline" className="w-full gap-2" onClick={() => setShowInquiry(true)}>
+                      <MessageSquare className="h-4 w-4" /> Message Landlord
+                    </Button>
+                  </div>
                 )}
               </div>
             </motion.div>
