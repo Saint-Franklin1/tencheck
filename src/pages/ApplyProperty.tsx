@@ -26,17 +26,20 @@ const ApplyProperty = () => {
     const fetchLink = async () => {
       if (!token) { setError("Invalid link"); setLoadingData(false); return; }
 
-      const { data: link } = await supabase
-        .from("application_links")
-        .select("*, properties(*)")
-        .eq("unique_token", token)
-        .maybeSingle();
+      const { data: links } = await (supabase as any).rpc("get_application_link_by_token", { _token: token });
+      const link = Array.isArray(links) ? links[0] : null;
 
       if (!link) { setError("This application link is invalid or has expired."); setLoadingData(false); return; }
       if (link.expires_at && new Date(link.expires_at) < new Date()) { setError("This application link has expired."); setLoadingData(false); return; }
 
+      const { data: prop } = await supabase
+        .from("properties")
+        .select("*")
+        .eq("id", link.property_id)
+        .maybeSingle();
+
       setLinkData(link);
-      setProperty(link.properties);
+      setProperty(prop);
       setLoadingData(false);
     };
     fetchLink();
