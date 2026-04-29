@@ -8,6 +8,7 @@ import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { PasswordStrengthIndicator, isPasswordStrong } from "@/components/PasswordStrengthIndicator";
+import { explainAuthError } from "@/lib/authDiagnostics";
 
 const roles = [
   { value: "tenant" as const, label: "Tenant" },
@@ -42,10 +43,16 @@ const Signup = () => {
       return;
     }
     setLoading(true);
-    const { error } = await signUp(email, password, { name, phone, role });
+    let error: any = null;
+    try {
+      const res = await signUp(email, password, { name, phone, role });
+      error = res.error;
+    } catch (e) {
+      error = e;
+    }
     setLoading(false);
     if (error) {
-      toast.error(error.message);
+      toast.error(await explainAuthError(error));
     } else {
       toast.success("Account created! Check your email to confirm, then log in.");
       navigate(redirectPath ? `/login?redirect=${encodeURIComponent(redirectPath)}` : "/login");

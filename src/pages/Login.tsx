@@ -6,7 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Shield, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { explainAuthError } from "@/lib/authDiagnostics";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -20,48 +22,62 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await signIn(email, password);
-    if (error) {
-      toast.error(error.message);
+
+    try {
+      const { error } = await signIn(email, password);
+      if (error) {
+        const friendly = await explainAuthError(error);
+        toast.error(friendly);
+        setLoading(false);
+        return;
+      }
+
+      const uid = (await supabase.auth.getUser()).data.user?.id || "";
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("role, account_status, deletion_status, is_suspended")
+        .eq("user_id", uid)
+        .maybeSingle();
+
+      if ((prof as any)?.account_status === "suspended" || (prof as any)?.is_suspended) {
+        toast.error("Your account has been suspended. Contact support.");
+        await supabase.auth.signOut();
+        setLoading(false);
+        return;
+      }
+
+      if ((prof as any)?.deletion_status === "pending_deletion") {
+        await supabase
+          .from("profiles")
+          .update({ deletion_status: "active", deletion_requested_at: null } as any)
+          .eq("user_id", uid);
+        toast.info("Welcome back! Your account deletion has been cancelled.");
+      }
+
+      const { data: isAdminRole } = await supabase.rpc("has_role", {
+        _user_id: uid,
+        _role: "admin",
+      });
+
       setLoading(false);
-      return;
-    }
 
-    // Fetch profile and check suspension/role
-    const { supabase: sb } = await import("@/integrations/supabase/client");
-    const uid = (await sb.auth.getUser()).data.user?.id || "";
-    const { data: prof } = await sb.from("profiles").select("*").eq("user_id", uid).maybeSingle();
-    
-    if ((prof as any)?.is_suspended) {
-      toast.error("Your account has been suspended. Contact support.");
-      await sb.auth.signOut();
+      if (redirectPath) {
+        toast.success("Welcome back!");
+        navigate(redirectPath);
+      } else if (isAdminRole) {
+        toast.success("Welcome, Admin!");
+        navigate("/admin");
+      } else if (prof?.role === "service_worker") {
+        toast.success("Welcome back!");
+        navigate("/worker-dashboard");
+      } else {
+        toast.success("Welcome back!");
+        navigate("/dashboard");
+      }
+    } catch (err) {
+      const friendly = await explainAuthError(err);
+      toast.error(friendly);
       setLoading(false);
-      return;
-    }
-
-    if ((prof as any)?.deletion_status === "pending_deletion") {
-      // Restore account on login during grace period
-      await sb.from("profiles").update({ deletion_status: "active", deletion_requested_at: null } as any).eq("user_id", uid);
-      toast.info("Welcome back! Your account deletion has been cancelled.");
-    }
-
-    // Check admin role via secure server-side function
-    const { data: isAdminRole } = await sb.rpc("has_role", { _user_id: uid, _role: "admin" });
-    
-    setLoading(false);
-
-    if (redirectPath) {
-      toast.success("Welcome back!");
-      navigate(redirectPath);
-    } else if (isAdminRole) {
-      toast.success("Welcome, Admin!");
-      navigate("/admin");
-    } else if (prof?.role === "service_worker") {
-      toast.success("Welcome back!");
-      navigate("/worker-dashboard");
-    } else {
-      toast.success("Welcome back!");
-      navigate("/dashboard");
     }
   };
 
