@@ -1635,6 +1635,17 @@ export type Database = {
         }
         Returns: string
       }
+      get_application_link_by_token: {
+        Args: { _token: string }
+        Returns: {
+          created_at: string
+          expires_at: string
+          id: string
+          landlord_id: string
+          property_id: string
+          unique_token: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
